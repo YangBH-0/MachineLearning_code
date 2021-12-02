@@ -1,3 +1,4 @@
+import copy
 import math, numpy as np
 import random
 
@@ -25,40 +26,37 @@ def euclidean(a, b):  # 유클리드 거리 구하는 함수
 
 
 def k_means(k, data):
+    result=[]
     x, y, p = data.shape
     data = data.reshape((x * y, p))
     for i in k:
-
-        z = [data[j] for j in range(i)]  # 군집의 중심
-        z = np.zeros((i, p))
-        for j in range(i):
-            z[j] = data[random.randrange(1, data.shape[0])]
-        c = [[] for i in range(i)]  # 군집
-        print(z.shape)
-        k_means_img = np.array(main(data, z, c, i),np.uint8)
-        cv2.imshow("{0}".format(i), k_means_img.reshape(x, y, p))
-    return c
-
+        centers = np.zeros((i, p)) # 군집의 중심 크기 설정
+        for j in range(i): # 군집의 중심 랜덤 픽셀로 초기화
+            centers[j] = data[random.randrange(0, data.shape[0])]
+        clusters = [[] for i in range(i)]  # 군집
+        print(centers.shape)
+        k_means_img = np.array(main(data, centers, clusters, i),np.uint8)
+        result.append(k_means_img.reshape(x, y, p))
+    return result
 
 def main(data, centers, clusters, k):
-    x, p = data.shape  # x = 데이터의 길이(x*y), p 해당 화소 값
+    len, p = data.shape  # len = 데이터의 길이(len*y), p 해당 화소 값
     while True:
+        print("각 군집의 중점 위치")
+        for i in range(k):
+            print("z", (i + 1), ":", centers[i])
         new_Cluster = [[] for i in range(k)]  # 새로 만든 군집
-        dist = [[] for i in range(x)]  # 군집의 중심과 각 점의 거리
-        for i in range(k):  # 군집의 중심과 각 픽셀의 거리 구하기
-            for j in range(x):
-                dist[j].append(euclidean(centers[i], data[j]))
-        for i in range(x):  # 군집의 중심들과 점의 거리 중 가장 작은 군집의 중심을 가지고 있는 군집에 넣기
-            new_Cluster[dist[i].index(min(dist[i]))].append(data[i].tolist())
-        try:
-            print(new_Cluster == clusters)
-        except:
-            print(new_Cluster)
-            print(clusters)
-        if np.all(new_Cluster == clusters):
-            result = []
-            for i in range(x):  # 군집의 중심들과 점의 거리 중 가장 작은 군집의 중심을 가지고 있는 군집에 넣기
-                result.append(centers[dist[i].index(min(dist[i]))])
+        for i in range(len): # 군집 생성
+            dist=[]
+            for j in range(k):
+                dist.append(euclidean(centers[j],data[i])) # 군집의 중심과 점의 거리 구하기
+            new_Cluster[dist.index(min(dist))].append(i) # 군집의 중심들과 점의 거리 중 가장 작은 군집의 중심을 가지고 있는 군집에 넣기
+
+        if new_Cluster == clusters:
+            result=copy.deepcopy(data)
+            for i in range(k):
+                for index in clusters[i]: # 군집에 있는 데이터 인덱스 번호 추출
+                    result[index]=centers[i] # 해당 군집에 있는 데이터의 값을 군집의 중심으로 바꾸기
             print("군집의 변화가 없음")
             return result
         else:
@@ -66,19 +64,27 @@ def main(data, centers, clusters, k):
 
         for i in range(k):  # 군집의 중심 좌표 갱신
             for j in range(p):
-                temp = [i[j] for i in clusters[i]]
+                temp = [data[index][j] for index in clusters[i]]
                 scale = np.mean(temp)
                 centers[i][j] = scale
-
-        print("각 군집의 중점 위치")
-        for i in range(len(centers)):
-            print("z", (i + 1), ":", centers[i])
+            if centers[i][j] == np.nan: # 만약 중복된 픽셀 값 시 오류 처리
+                centers[i]=data[random.randrange(0,len)]
 
 
 # print("최종 군집 중심 좌표", z)
 
-img = cv2.imread('../images/final_exam/BSDS_1.png', cv2.IMREAD_COLOR)
+img = cv2.imread('../images/final/BSDS_1.png', cv2.IMREAD_COLOR)
+#img2= cv2.imread('../images/final/BSDS_2.png', cv2.IMREAD_COLOR)
+#img3 = cv2.imread('../images/final/BSDS3.png', cv2.IMREAD_COLOR)
 if img is None:
     raise Exception("영상파일 읽기 에러")
-k_means([2,5,7], img)
+k=[2,5,7]
+r1 = k_means(k, img)
+#k_means(k, img2)
+#k_means(k, img3)
+cv2.imshow("img",img)
+for i in range(len(r1)):
+    cv2.imshow("{0}".format(k[i]), r1[i])
+#cv2.imshow(img2)
+#cv2.imshow(img3)
 cv2.waitKey(0)
